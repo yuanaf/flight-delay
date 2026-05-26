@@ -5,11 +5,7 @@ import pickle
 import os
 import random
 
-st.set_page_config(
-    page_title="Will My Flight Be Late?",
-    page_icon="✈️",
-    layout="centered"
-)
+st.set_page_config(page_title="Will My Flight Be Late?", page_icon="", layout="centered")
 
 st.markdown("""
 <style>
@@ -94,17 +90,17 @@ def build_factors(month, dow, dep_hour, distance, origin):
     return factors
 
 
-# ── Header ──────────────────────────────────────────────────────────────────
+# Header
 st.markdown("""
 <p style="font-size:12px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">
 Future Classroom · Machine Learning</p>
-<p style="font-size:26px;font-weight:600;color:#111827;margin-bottom:0;">✈️ Will my flight be late?</p>
+<p style="font-size:26px;font-weight:600;color:#111827;margin-bottom:0;">Will my flight be late?</p>
 <span style="background:#eff6ff;color:#1e40af;font-size:11px;padding:4px 10px;border-radius:6px;font-weight:500;">
 Powered by Decision Tree · Trained on 1M+ flights · 89% accuracy</span>
 <br><br>
 """, unsafe_allow_html=True)
 
-# ── Form ─────────────────────────────────────────────────────────────────────
+# Form
 with st.form("flight_form"):
     col1, col2 = st.columns(2)
     with col1:
@@ -124,9 +120,9 @@ with st.form("flight_form"):
         distance  = st.number_input('Distance (miles)', min_value=50, max_value=5000, value=2475, step=50)
 
     day_of_month = st.slider('Day of month', min_value=1, max_value=28, value=15)
-    submitted    = st.form_submit_button("✈️  Check my flight")
+    submitted    = st.form_submit_button("Check my flight")
 
-# ── Result ───────────────────────────────────────────────────────────────────
+# Result
 if submitted:
     is_weekend    = 1 if dow >= 6 else 0
     is_peak_month = 1 if month in [1,7,11,12] else 0
@@ -142,104 +138,92 @@ if submitted:
 
     prediction  = model.predict(input_scaled[features])[0]
     proba       = model.predict_proba(input_scaled[features])[0]
-    delay_prob  = round(proba[1] * 100)
-    ontime_prob = round(proba[0] * 100)
-    confidence  = delay_prob if prediction == 1 else ontime_prob
+    confidence  = round(proba[1] * 100) if prediction == 1 else round(proba[0] * 100)
     is_delayed  = prediction == 1
 
     factors = build_factors(month, dow, dep_hour, distance, origin)
-    random.seed(month + dow + dep_hour)
-    seat      = random.choice(['12A','14B','16C','22D','8F','27A','31C','5B','19D','11E'])
-    gate      = random.choice(['A12','A18','B04','B22','C11','C33','D07','D15','E02','E19'])
-    flight_no = f"FL {random.randint(1000,9999)}"
 
-    verdict_txt   = '⚠️  Likely Delayed' if is_delayed else '✅  On Time'
+    verdict_txt   = 'Likely Delayed' if is_delayed else 'On Time'
     verdict_color = '#991b1b' if is_delayed else '#166534'
+    verdict_bg    = '#fef2f2' if is_delayed else '#f0fdf4'
     bar_color     = '#dc2626' if is_delayed else '#16a34a'
-    conf_color    = '#991b1b' if is_delayed else '#166534'
 
     factor_colors = {'risk':'#dc2626','safe':'#16a34a','neutral':'#9ca3af'}
     factors_html  = ''.join(
-        f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:13px;color:#4b5563;">'
-        f'<span style="color:{factor_colors[t]};font-size:10px;">●</span>'
+        f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;color:#374151;">'
+        f'<span style="width:7px;height:7px;border-radius:50%;background:{factor_colors[t]};flex-shrink:0;display:inline-block;"></span>'
         f'<span>{txt}</span></div>'
         for t, txt in factors
     )
 
-    bar_width = confidence
-
     html = f"""
 <div style="background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;margin-top:1rem;">
 
-  <div style="background:#1A3A5C;padding:18px 24px;display:flex;justify-content:space-between;align-items:flex-start;">
-    <div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;">Boarding pass</div>
-      <div style="font-size:18px;font-weight:600;color:#ffffff;letter-spacing:0.04em;">Future Airlines</div>
-    </div>
-    <div style="font-size:13px;color:rgba(255,255,255,0.8);font-family:monospace;">{flight_no}</div>
+  <!-- Header -->
+  <div style="background:#1A3A5C;padding:16px 24px;">
+    <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Boarding pass</div>
+    <div style="font-size:16px;font-weight:600;color:#ffffff;letter-spacing:0.03em;">Future Airlines</div>
   </div>
 
-  <div style="padding:20px 24px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px dashed #e5e7eb;">
+  <!-- Route -->
+  <div style="padding:24px 24px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px dashed #e5e7eb;">
     <div>
-      <div style="font-size:40px;font-weight:700;color:#111827;line-height:1;font-family:monospace;">{origin}</div>
-      <div style="font-size:12px;color:#6b7280;margin-top:4px;">{AIRPORTS.get(origin,origin)}</div>
+      <div style="font-size:44px;font-weight:700;color:#111827;line-height:1;font-family:monospace;letter-spacing:0.02em;">{origin}</div>
+      <div style="font-size:12px;color:#6b7280;margin-top:5px;">{AIRPORTS.get(origin,origin)}</div>
     </div>
-    <div style="font-size:28px;color:#d1d5db;">✈</div>
+    <div style="font-size:13px;color:#d1d5db;letter-spacing:0.15em;">— — —</div>
     <div style="text-align:right;">
-      <div style="font-size:40px;font-weight:700;color:#111827;line-height:1;font-family:monospace;">{dest}</div>
-      <div style="font-size:12px;color:#6b7280;margin-top:4px;">{AIRPORTS.get(dest,dest)}</div>
+      <div style="font-size:44px;font-weight:700;color:#111827;line-height:1;font-family:monospace;letter-spacing:0.02em;">{dest}</div>
+      <div style="font-size:12px;color:#6b7280;margin-top:5px;">{AIRPORTS.get(dest,dest)}</div>
     </div>
   </div>
 
+  <!-- Details -->
   <div style="display:grid;grid-template-columns:repeat(4,1fr);padding:14px 24px;gap:8px;border-bottom:1px dashed #e5e7eb;">
     <div>
       <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.07em;">Month</div>
-      <div style="font-size:14px;font-weight:600;color:#111827;margin-top:3px;font-family:monospace;">{MONTHS_SHORT[month]}</div>
+      <div style="font-size:15px;font-weight:600;color:#111827;margin-top:4px;font-family:monospace;">{MONTHS_SHORT[month]}</div>
     </div>
     <div>
       <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.07em;">Departs</div>
-      <div style="font-size:14px;font-weight:600;color:#111827;margin-top:3px;font-family:monospace;">{dep_hour:02d}:00</div>
+      <div style="font-size:15px;font-weight:600;color:#111827;margin-top:4px;font-family:monospace;">{dep_hour:02d}:00</div>
     </div>
     <div>
       <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.07em;">Distance</div>
-      <div style="font-size:14px;font-weight:600;color:#111827;margin-top:3px;font-family:monospace;">{distance:,} mi</div>
+      <div style="font-size:15px;font-weight:600;color:#111827;margin-top:4px;font-family:monospace;">{distance:,} mi</div>
     </div>
     <div>
       <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.07em;">Day</div>
-      <div style="font-size:14px;font-weight:600;color:#111827;margin-top:3px;font-family:monospace;">{DAYS[dow][:3]}</div>
+      <div style="font-size:15px;font-weight:600;color:#111827;margin-top:4px;font-family:monospace;">{DAYS[dow][:3]}</div>
     </div>
   </div>
 
-  <div style="padding:20px 24px;display:flex;justify-content:space-between;align-items:center;">
+  <!-- Prediction -->
+  <div style="padding:20px 24px;display:flex;justify-content:space-between;align-items:center;background:{verdict_bg};">
     <div>
-      <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px;">ML Prediction</div>
-      <div style="font-size:26px;font-weight:700;color:{verdict_color};">{verdict_txt}</div>
+      <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;">ML Prediction</div>
+      <div style="font-size:28px;font-weight:700;color:{verdict_color};">{verdict_txt}</div>
     </div>
     <div style="text-align:right;">
-      <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;">Confidence</div>
-      <div style="background:#f3f4f6;border-radius:4px;height:6px;width:130px;overflow:hidden;">
-        <div style="background:{bar_color};height:100%;border-radius:4px;width:{bar_width}%;"></div>
+      <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:7px;">Confidence</div>
+      <div style="background:rgba(0,0,0,0.08);border-radius:4px;height:6px;width:130px;overflow:hidden;margin-left:auto;">
+        <div style="background:{bar_color};height:100%;border-radius:4px;width:{confidence}%;"></div>
       </div>
-      <div style="font-size:14px;font-weight:600;color:{conf_color};margin-top:5px;">{confidence}%</div>
+      <div style="font-size:15px;font-weight:700;color:{verdict_color};margin-top:6px;">{confidence}%</div>
     </div>
   </div>
 
-  <div style="padding:0 24px 20px;border-top:1px solid #f3f4f6;padding-top:14px;">
-    <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;">Risk factors</div>
+  <!-- Risk Factors -->
+  <div style="padding:16px 24px 20px;border-top:1px solid #f3f4f6;">
+    <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px;">Risk factors</div>
     {factors_html}
   </div>
 
-  <div style="border-top:1px dashed #d1d5db;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;">
-    <div style="font-size:11px;color:#9ca3af;font-family:monospace;">Seat {seat} &nbsp;|&nbsp; Gate {gate}</div>
-    <div style="font-size:11px;color:#9ca3af;font-family:monospace;">||| || ||| | || ||| || | ||</div>
+  <!-- Footer note -->
+  <div style="border-top:1px dashed #e5e7eb;padding:12px 24px;">
+    <div style="font-size:11px;color:#9ca3af;">Decision Tree · scikit-learn · 1,022,824 flights · 89% test accuracy</div>
   </div>
 
-</div>
-
-<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;font-size:13px;color:#166534;margin-top:1rem;">
-  <strong>How this works:</strong> This uses a real Decision Tree trained on 1,022,824 US domestic flights (2024).
-  Features: month, day of week, departure hour, departure period, distance, is_weekend, is_peak_month.
-  Trained in Lesson 3 using scikit-learn. Test accuracy: <strong>89%</strong>.
 </div>
 """
     st.markdown(html, unsafe_allow_html=True)
