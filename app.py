@@ -17,7 +17,12 @@ st.markdown("""
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
 .main { background-color: #f8f9fa; }
-.block-container { padding: 2rem 1.5rem; max-width: 680px; }
+.block-container { padding: 2rem 1.5rem !important; max-width: 680px; padding-top: 1rem !important; }
+
+#MainMenu { visibility: hidden; }
+header[data-testid="stHeader"] { display: none; }
+.stDeployButton { display: none; }
+footer { visibility: hidden; }
 
 .page-title {
     font-size: 13px;
