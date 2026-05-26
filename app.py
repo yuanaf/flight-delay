@@ -32,11 +32,13 @@ def load_model():
     with open(model_path, 'rb') as f:
         return pickle.load(f)
 
-artifact      = load_model()
-model         = artifact['model']
-scaler        = artifact['scaler']
-features      = artifact['features']
-cols_to_scale = artifact['cols_to_scale']
+artifact           = load_model()
+model              = artifact['model']
+scaler             = artifact['scaler']
+features           = artifact['features']
+cols_to_scale      = artifact['cols_to_scale']
+origin_delay_rate  = artifact.get('origin_delay_rate', {})
+global_delay_rate  = sum(origin_delay_rate.values()) / len(origin_delay_rate) if origin_delay_rate else 0.107
 
 AIRPORTS = {
     'ATL':'Atlanta','DFW':'Dallas/Fort Worth','DEN':'Denver',
@@ -53,13 +55,11 @@ MONTHS_SHORT = {1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'May',6:'Jun',
 DAYS         = {1:'Monday',2:'Tuesday',3:'Wednesday',4:'Thursday',5:'Friday',6:'Saturday',7:'Sunday'}
 
 
-def build_factors(month, dow, dep_hour, distance, origin):
+def build_factors(month, dow, dep_hour, distance, origin, origin_delay_rate, global_delay_rate):
     factors = []
     is_peak    = month in [1, 7, 11, 12]
     is_weekend = dow >= 6
     dep_period = 0 if dep_hour < 12 else 1 if dep_hour < 17 else 2 if dep_hour < 21 else 3
-    high_risk  = ['ORD','LGA','JFK','BOS','DEN','EWR']
-
     if is_peak:
         factors.append(('risk', 'January — high winter storm risk' if month == 1 else 'Peak travel month — higher delay probability'))
     else:
@@ -84,8 +84,13 @@ def build_factors(month, dow, dep_hour, distance, origin):
     else:
         factors.append(('neutral', f'Medium-distance ({distance:,} mi)'))
 
-    if origin in high_risk:
-        factors.append(('risk', f'{origin} — high congestion or weather exposure'))
+    rate = origin_delay_rate.get(origin, global_delay_rate)
+    if rate > global_delay_rate * 1.2:
+        factors.append(('risk', f'{origin} — {rate*100:.1f}% historical delay rate (above average)'))
+    elif rate < global_delay_rate * 0.8:
+        factors.append(('safe', f'{origin} — {rate*100:.1f}% historical delay rate (below average)'))
+    else:
+        factors.append(('neutral', f'{origin} — {rate*100:.1f}% historical delay rate (near average)'))
 
     return factors
 
@@ -96,7 +101,7 @@ st.markdown("""
 Future Classroom · Machine Learning</p>
 <p style="font-size:26px;font-weight:600;color:#111827;margin-bottom:0;">Will my flight be late?</p>
 <span style="background:#eff6ff;color:#1e40af;font-size:11px;padding:4px 10px;border-radius:6px;font-weight:500;">
-Powered by Decision Tree · Trained on 1M+ flights · 89% accuracy</span>
+Powered by Decision Tree · Trained on 1M+ flights · 81% accuracy · origin-aware</span>
 <br><br>
 """, unsafe_allow_html=True)
 
@@ -112,9 +117,7 @@ with st.form("flight_form"):
         dep_hour  = st.selectbox('Departure time', list(range(5,23)),
                       format_func=lambda x: f"{x:02d}:00 {'AM' if x<12 else 'PM'}", index=4)
     with col2:
-        dest      = st.selectbox('Destination airport', list(AIRPORTS.keys()),
-                      format_func=lambda x: f"{x} — {AIRPORTS[x]}",
-                      index=list(AIRPORTS.keys()).index('LAX'))
+
         dow       = st.selectbox('Day of week', list(DAYS.keys()),
                       format_func=lambda x: DAYS[x], index=2)
         distance  = st.number_input('Distance (miles)', min_value=50, max_value=5000, value=2475, step=50)
@@ -128,10 +131,12 @@ if submitted:
     is_peak_month = 1 if month in [1,7,11,12] else 0
     dep_period    = 0 if dep_hour < 12 else 1 if dep_hour < 17 else 2 if dep_hour < 21 else 3
 
+    origin_rate = origin_delay_rate.get(origin, global_delay_rate)
     input_df = pd.DataFrame([{
         'month': month, 'day_of_month': day_of_month, 'day_of_week': dow,
         'dep_hour': dep_hour, 'dep_period': dep_period, 'distance': distance,
         'is_weekend': is_weekend, 'is_peak_month': is_peak_month,
+        'origin_delay_rate': origin_rate,
     }])
     input_scaled = input_df.copy()
     input_scaled[cols_to_scale] = scaler.transform(input_df[cols_to_scale])
@@ -141,7 +146,7 @@ if submitted:
     confidence  = round(proba[1] * 100) if prediction == 1 else round(proba[0] * 100)
     is_delayed  = prediction == 1
 
-    factors = build_factors(month, dow, dep_hour, distance, origin)
+    factors = build_factors(month, dow, dep_hour, distance, origin, origin_delay_rate, global_delay_rate)
 
     verdict_txt   = 'Likely Delayed' if is_delayed else 'On Time'
     verdict_color = '#991b1b' if is_delayed else '#166534'
@@ -173,8 +178,8 @@ if submitted:
     </div>
     <div style="font-size:13px;color:#d1d5db;letter-spacing:0.15em;">— — —</div>
     <div style="text-align:right;">
-      <div style="font-size:44px;font-weight:700;color:#111827;line-height:1;font-family:monospace;letter-spacing:0.02em;">{dest}</div>
-      <div style="font-size:12px;color:#6b7280;margin-top:5px;">{AIRPORTS.get(dest,dest)}</div>
+      <div style="font-size:16px;font-weight:500;color:#9ca3af;line-height:1;font-family:monospace;letter-spacing:0.04em;">DESTINATION</div>
+      <div style="font-size:12px;color:#9ca3af;margin-top:6px;">Not in model features</div>
     </div>
   </div>
 
